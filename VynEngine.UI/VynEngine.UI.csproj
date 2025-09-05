@@ -9,6 +9,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="Resources/Inter.ttf" LogicalName="Inter.ttf"/>
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\VynEngine.Core\VynEngine.Core.csproj" />
     </ItemGroup>
 

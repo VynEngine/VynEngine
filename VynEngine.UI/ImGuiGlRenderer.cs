@@ -3,17 +3,14 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using ImGuiNET;
 using Silk.NET.OpenGL;
-using Silk.NET.Windowing;
 
 namespace VynEngine.UI;
 
 internal sealed unsafe class ImGuiGlRenderer : IDisposable
 {
-    private static ImGuiGlRenderer? s_current;
+    private static ImGuiGlRenderer? _current;
 
     private readonly GL _gl;
-
-    // Device objects
     private uint _fontTexture;
     private uint _shader;
     private int _locTex;
@@ -25,7 +22,7 @@ internal sealed unsafe class ImGuiGlRenderer : IDisposable
     public ImGuiGlRenderer(GL gl)
     {
         _gl = gl;
-        s_current = this;
+        _current = this;
 
         CreateDeviceObjects();
         CreateFontsTexture();
@@ -33,7 +30,6 @@ internal sealed unsafe class ImGuiGlRenderer : IDisposable
         InitMultiViewportSupport();
     }
 
-    // ---------- Frame API ----------
     public void NewFrame()
     {
         if (_shader == 0) CreateDeviceObjects();
@@ -46,31 +42,31 @@ internal sealed unsafe class ImGuiGlRenderer : IDisposable
         var fbHeight = (int)(drawData.DisplaySize.Y * drawData.FramebufferScale.Y);
         if (fbWidth <= 0 || fbHeight <= 0) return;
 
-        var last_active_texture = _gl.GetInteger(GetPName.ActiveTexture);
+        var lastActiveTexture = _gl.GetInteger(GetPName.ActiveTexture);
         _gl.ActiveTexture(TextureUnit.Texture0);
-        var last_program = _gl.GetInteger(GetPName.CurrentProgram);
-        var last_texture = _gl.GetInteger(GetPName.TextureBinding2D);
-        var last_sampler = _gl.GetInteger(GetPName.SamplerBinding);
-        var last_array_buf = _gl.GetInteger(GetPName.ArrayBufferBinding);
-        var last_vao = _gl.GetInteger(GetPName.VertexArrayBinding);
-        Span<int> last_polygon_mode = stackalloc int[2];
-        _gl.GetInteger(GetPName.PolygonMode, out last_polygon_mode[0]);
-        Span<int> last_viewport = stackalloc int[4];
-        _gl.GetInteger(GetPName.Viewport, out last_viewport[0]);
-        Span<int> last_scissor_box = stackalloc int[4];
-        _gl.GetInteger(GetPName.ScissorBox, out last_scissor_box[0]);
-        var last_blend_src_rgb = _gl.GetInteger(GetPName.BlendSrcRgb);
-        var last_blend_dst_rgb = _gl.GetInteger(GetPName.BlendDstRgb);
-        var last_blend_src_alpha = _gl.GetInteger(GetPName.BlendSrcAlpha);
-        var last_blend_dst_alpha = _gl.GetInteger(GetPName.BlendDstAlpha);
-        var last_eq_rgb = _gl.GetInteger(GetPName.BlendEquationRgb);
-        var last_eq_alpha = _gl.GetInteger(GetPName.BlendEquationAlpha);
-        var last_en_blend = _gl.IsEnabled(EnableCap.Blend);
-        var last_en_cull = _gl.IsEnabled(EnableCap.CullFace);
-        var last_en_depth = _gl.IsEnabled(EnableCap.DepthTest);
-        var last_en_stencil = _gl.IsEnabled(EnableCap.StencilTest);
-        var last_en_scissor = _gl.IsEnabled(EnableCap.ScissorTest);
-        var last_en_prim_restart = _gl.IsEnabled(EnableCap.PrimitiveRestart);
+        var lastProgram = _gl.GetInteger(GetPName.CurrentProgram);
+        var lastTexture = _gl.GetInteger(GetPName.TextureBinding2D);
+        var lastSampler = _gl.GetInteger(GetPName.SamplerBinding);
+        var lastArrayBuf = _gl.GetInteger(GetPName.ArrayBufferBinding);
+        var lastVao = _gl.GetInteger(GetPName.VertexArrayBinding);
+        Span<int> lastPolygonMode = stackalloc int[2];
+        _gl.GetInteger(GetPName.PolygonMode, out lastPolygonMode[0]);
+        Span<int> lastViewport = stackalloc int[4];
+        _gl.GetInteger(GetPName.Viewport, out lastViewport[0]);
+        Span<int> lastScissorBox = stackalloc int[4];
+        _gl.GetInteger(GetPName.ScissorBox, out lastScissorBox[0]);
+        var lastBlendSrcRgb = _gl.GetInteger(GetPName.BlendSrcRgb);
+        var lastBlendDstRgb = _gl.GetInteger(GetPName.BlendDstRgb);
+        var lastBlendSrcAlpha = _gl.GetInteger(GetPName.BlendSrcAlpha);
+        var lastBlendDstAlpha = _gl.GetInteger(GetPName.BlendDstAlpha);
+        var lastEqRgb = _gl.GetInteger(GetPName.BlendEquationRgb);
+        var lastEqAlpha = _gl.GetInteger(GetPName.BlendEquationAlpha);
+        var lastEnBlend = _gl.IsEnabled(EnableCap.Blend);
+        var lastEnCull = _gl.IsEnabled(EnableCap.CullFace);
+        var lastEnDepth = _gl.IsEnabled(EnableCap.DepthTest);
+        var lastEnStencil = _gl.IsEnabled(EnableCap.StencilTest);
+        var lastEnScissor = _gl.IsEnabled(EnableCap.ScissorTest);
+        var lastEnPrimRestart = _gl.IsEnabled(EnableCap.PrimitiveRestart);
 
         var vao = _gl.GenVertexArray();
         SetupRenderState(drawData, fbWidth, fbHeight, vao);
@@ -96,9 +92,9 @@ internal sealed unsafe class ImGuiGlRenderer : IDisposable
             _gl.BufferData(GLEnum.ElementArrayBuffer, idxSize, null, GLEnum.StreamDraw);
             _gl.BufferSubData(GLEnum.ElementArrayBuffer, 0, idxSize, idxPtr);
 
-            for (var cmd_i = 0; cmd_i < drawList.CmdBuffer.Size; cmd_i++)
+            for (var i = 0; i < drawList.CmdBuffer.Size; i++)
             {
-                var cmd = drawList.CmdBuffer[cmd_i];
+                var cmd = drawList.CmdBuffer[i];
 
                 if (cmd.UserCallback != IntPtr.Zero)
                 {
@@ -129,24 +125,24 @@ internal sealed unsafe class ImGuiGlRenderer : IDisposable
 
         _gl.DeleteVertexArray(vao);
 
-        if (last_program == 0 || _gl.IsProgram((uint)last_program)) _gl.UseProgram((uint)last_program);
-        _gl.BindTexture(TextureTarget.Texture2D, (uint)last_texture);
-        _gl.BindSampler(0, (uint)last_sampler);
-        _gl.ActiveTexture((TextureUnit)last_active_texture);
-        _gl.BindVertexArray((uint)last_vao);
-        _gl.BindBuffer(GLEnum.ArrayBuffer, (uint)last_array_buf);
-        _gl.BlendEquationSeparate((GLEnum)last_eq_rgb, (GLEnum)last_eq_alpha);
-        _gl.BlendFuncSeparate((BlendingFactor)last_blend_src_rgb, (BlendingFactor)last_blend_dst_rgb,
-            (BlendingFactor)last_blend_src_alpha, (BlendingFactor)last_blend_dst_alpha);
-        Toggle(EnableCap.Blend, last_en_blend);
-        Toggle(EnableCap.CullFace, last_en_cull);
-        Toggle(EnableCap.DepthTest, last_en_depth);
-        Toggle(EnableCap.StencilTest, last_en_stencil);
-        Toggle(EnableCap.ScissorTest, last_en_scissor);
-        Toggle(EnableCap.PrimitiveRestart, last_en_prim_restart);
-        _gl.PolygonMode(TriangleFace.FrontAndBack, (PolygonMode)last_polygon_mode[0]);
-        _gl.Viewport(last_viewport[0], last_viewport[1], (uint)last_viewport[2], (uint)last_viewport[3]);
-        _gl.Scissor(last_scissor_box[0], last_scissor_box[1], (uint)last_scissor_box[2], (uint)last_scissor_box[3]);
+        if (lastProgram == 0 || _gl.IsProgram((uint)lastProgram)) _gl.UseProgram((uint)lastProgram);
+        _gl.BindTexture(TextureTarget.Texture2D, (uint)lastTexture);
+        _gl.BindSampler(0, (uint)lastSampler);
+        _gl.ActiveTexture((TextureUnit)lastActiveTexture);
+        _gl.BindVertexArray((uint)lastVao);
+        _gl.BindBuffer(GLEnum.ArrayBuffer, (uint)lastArrayBuf);
+        _gl.BlendEquationSeparate((GLEnum)lastEqRgb, (GLEnum)lastEqAlpha);
+        _gl.BlendFuncSeparate((BlendingFactor)lastBlendSrcRgb, (BlendingFactor)lastBlendDstRgb,
+            (BlendingFactor)lastBlendSrcAlpha, (BlendingFactor)lastBlendDstAlpha);
+        Toggle(EnableCap.Blend, lastEnBlend);
+        Toggle(EnableCap.CullFace, lastEnCull);
+        Toggle(EnableCap.DepthTest, lastEnDepth);
+        Toggle(EnableCap.StencilTest, lastEnStencil);
+        Toggle(EnableCap.ScissorTest, lastEnScissor);
+        Toggle(EnableCap.PrimitiveRestart, lastEnPrimRestart);
+        _gl.PolygonMode(TriangleFace.FrontAndBack, (PolygonMode)lastPolygonMode[0]);
+        _gl.Viewport(lastViewport[0], lastViewport[1], (uint)lastViewport[2], (uint)lastViewport[3]);
+        _gl.Scissor(lastScissorBox[0], lastScissorBox[1], (uint)lastScissorBox[2], (uint)lastScissorBox[3]);
         return;
 
         void Toggle(EnableCap cap, bool on)
@@ -317,8 +313,8 @@ internal sealed unsafe class ImGuiGlRenderer : IDisposable
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static void Renderer_RenderWindow(ImGuiViewportPtr vp)
     {
-        s_current?._gl.Clear(ClearBufferMask.ColorBufferBit);
-        s_current?.RenderDrawData(vp.DrawData);
+        _current?._gl.Clear(ClearBufferMask.ColorBufferBit);
+        _current?.RenderDrawData(vp.DrawData);
     }
 
     public void Dispose()
@@ -331,6 +327,6 @@ internal sealed unsafe class ImGuiGlRenderer : IDisposable
         if (_ebo != 0) _gl.DeleteBuffer(_ebo);
         if (_shader != 0) _gl.DeleteProgram(_shader);
 
-        if (ReferenceEquals(s_current, this)) s_current = null;
+        if (ReferenceEquals(_current, this)) _current = null;
     }
 }

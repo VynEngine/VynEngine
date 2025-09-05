@@ -43,7 +43,7 @@ public class Window(string title = "Vyn Engine") : IDisposable
             throw new InvalidOperationException("The layer is already added to this context.");
         
         _layers.Add(layer);
-        layer.Attach(this);
+        layer.InternalAttach(this);
     }
     
     /// <summary>
@@ -56,6 +56,9 @@ public class Window(string title = "Vyn Engine") : IDisposable
         if (_layers.Remove(layer))
             layer.OnDetach();
     }
+
+    /// <inheritdoc cref="Application.InvokeOnUI(Action)"/>
+    public void InvokeOnUI(Action action) => Application.Instance?.InvokeOnUI(action);
     
     /// <summary>
     /// Gets called every frame to render the window's UI. Override this method to implement custom UI rendering

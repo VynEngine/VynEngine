@@ -1,64 +1,158 @@
-﻿using System.Numerics;
+﻿using System.Collections.Concurrent;
+using System.Numerics;
 using ImGuiNET;
+using Silk.NET.Core;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
+using VynEngine.Core.Exceptions;
 
 namespace VynEngine.UI;
 
-public sealed class Application(string title = "VynEngine") : IDisposable
+/// <summary>
+/// The application is the main entry point for the UI system. It manages the main window, the ImGui context,
+/// and the rendering loop. It is responsible for initializing and shutting down the ImGui context,
+/// as well as handling input and rendering. It also manages multiple UI windows and their layers.
+/// </summary>
+public sealed class Application : IDisposable
 {
-    public Vector2 InitialSize { get; set; } = new(1600, 900);
+    /// <summary>
+    /// Singleton instance of the application. Only one instance is allowed.
+    /// </summary>
+    internal static Application Instance { get; private set; } = null!;
+    
+    /// <summary>
+    /// The ID of the main thread that created the application. This can be used to ensure that certain operations
+    /// are only performed on the main thread, as required by ImGui and many UI frameworks.
+    /// </summary>
+    internal int MainThreadId { get; set; } = Environment.CurrentManagedThreadId;
+    
+    /// <summary>
+    /// The title bar chrome settings for the application window. This is currently mostly unimplemented. In the future, maybe ;)
+    /// </summary>
+    public TitleBarChrome Chrome { get; }
+    
+    /// <summary>
+    /// The notification service for displaying toast notifications to the user.
+    /// </summary>
+    public NotificationService Notifications { get; } = new();
 
-    public TitleBarChrome Chrome { get; } = new()
+    /// <summary>
+    /// The icon of the application window.
+    /// </summary>
+    public RawImage? Icon
     {
-        Title = title
-    };
+        get => _icon;
+        set
+        {
+            _icon = value;
+            
+            if (_started)
+            {
+                UpdateIcon();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// The native window created and managed by the application.
+    /// </summary>
+    public IWindow NativeWindow { get; }
 
     private readonly List<Window> _uiWindows = [];
-    private IWindow? _native;
+    private readonly ConcurrentQueue<Action> _uiActions = new();
     private GL? _gl;
     private IInputContext? _input;
     private ImGuiGlRenderer? _renderer;
-
+    private RawImage? _icon;
     private IntPtr _imguiCtx;
     private bool _started, _disposed;
 
-    public void AddWindow(Window uiWindow) => _uiWindows.Add(uiWindow);
-
-    public void Start()
+    public Application(string title = "VynEngine", Vector2? initialSize = null)
     {
-        if (_started) return;
-        _started = true;
-        if (_uiWindows.Count == 0) throw new InvalidOperationException("No UI windows added to the application.");
+        if (Instance != null) throw new UIException("Only one instance of Application is allowed.");
+        Instance = this;
+        
+        initialSize ??= new Vector2(1280, 720);
+        var maxmize = initialSize.Value.X <= 0 || initialSize.Value.Y <= 0;
+        if (maxmize) initialSize = new Vector2(1280, 720);
+        
+        Chrome = new TitleBarChrome
+        {
+            Title = title
+        };
         
         var opts = WindowOptions.Default with
         {
             Title = Chrome.Title,
-            Size = new Vector2D<int>((int)InitialSize.X, (int)InitialSize.Y),
+            Size = new Vector2D<int>((int)initialSize.Value.X, (int)initialSize.Value.Y),
             API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible,
                 new APIVersion(3, 3)),
             VSync = true,
-            IsEventDriven = false
+            IsEventDriven = false,
         };
 
-        _native = Silk.NET.Windowing.Window.Create(opts);
-        _native.Load += OnLoad;
-        _native.Render += OnRender;
-        _native.Resize += OnResize;
-        _native.Closing += OnClosing;
+        NativeWindow = Silk.NET.Windowing.Window.Create(opts);
+        NativeWindow.Load += OnLoad;
+        NativeWindow.Render += OnRender;
+        NativeWindow.Resize += OnResize;
+        NativeWindow.Closing += OnClosing;
 
-        _native.Run();
+        if (maxmize) NativeWindow.WindowState = WindowState.Maximized;
     }
 
+    /// <summary>
+    /// Adds a new UI window to the application. The window will be managed and rendered by the application.
+    /// If no windows are added before starting the application, an exception will be thrown.
+    /// </summary>
+    /// <param name="uiWindow">The UI window to add.</param>
+    public void AddWindow(Window uiWindow) => _uiWindows.Add(uiWindow);
+
+    /// <summary>
+    /// Starts the application's main loop. This will block until the application is closed. If the application
+    /// has already been started, this method will return immediately. If no UI windows have been added, an exception
+    /// will be thrown.
+    /// </summary>
+    /// <exception cref="UIException">No UI windows added to the application.</exception>
+    public void Start()
+    {
+        if (_started) return;
+        _started = true;
+        if (_uiWindows.Count == 0) throw new UIException("No UI windows added to the application.");
+
+        MainThreadId = Environment.CurrentManagedThreadId; // ensure main thread id is correct
+        NativeWindow.Run();
+    }
+
+    /// <summary>
+    /// Invokes the given action on the main UI thread. If called from the main thread, the action will be executed
+    /// immediately. If called from another thread, the action will be queued and executed on the next frame.
+    /// </summary>
+    /// <param name="action">The action to invoke on the UI thread.</param>
+    public void InvokeOnUI(Action action)
+    {
+        if (Environment.CurrentManagedThreadId == MainThreadId)
+        {
+            action();
+        }
+        else
+        {
+            _uiActions.Enqueue(action);
+        }
+    }
+
+    /// <summary>
+    /// Disposes the application and releases all resources. This will close the native window and clean up
+    /// the ImGui context. After calling this method, the application should not be used anymore.
+    /// </summary>
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
         try
         {
-            _native?.Dispose();
+            NativeWindow?.Dispose();
         }
         catch
         {
@@ -68,8 +162,8 @@ public sealed class Application(string title = "VynEngine") : IDisposable
 
     private void OnLoad()
     {
-        _gl = GL.GetApi(_native!);
-        _input = _native!.CreateInput();
+        _gl = GL.GetApi(NativeWindow);
+        _input = NativeWindow.CreateInput();
 
         _imguiCtx = ImGui.CreateContext();
         ImGui.SetCurrentContext(_imguiCtx);
@@ -78,24 +172,44 @@ public sealed class Application(string title = "VynEngine") : IDisposable
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable | ImGuiConfigFlags.ViewportsEnable |
                           ImGuiConfigFlags.NavEnableKeyboard;
 
-        io.Fonts.AddFontDefault();
+        var mainFontData = LoadFromEmbeddedResource("Inter.ttf");
+        if (mainFontData != null)
+        {
+            io.Fonts.Clear();
+            
+            unsafe
+            {
+                fixed (byte* p = mainFontData)
+                {
+                    io.Fonts.AddFontFromMemoryTTF((IntPtr)p, mainFontData.Length, 16.0f);
+                }
 
-        var style = ImGui.GetStyle();
-        style.WindowRounding = 6f;
-        style.Colors[(int)ImGuiCol.WindowBg].W = 1.0f;
+                io.Fonts.Build();
+            }
+        }
+        else
+        {
+            io.Fonts.AddFontDefault();
+        }
+
+        VynStyle.Apply();
 
         _renderer = new ImGuiGlRenderer(_gl!);
 
         HookInput(_input!, io);
+        UpdateIcon();
     }
 
     private void OnRender(double deltaTime)
     {
         if (_gl is null || _renderer is null) return;
+        
+        DrainUIActions(); // execute any pending UI actions
+        
         ImGui.SetCurrentContext(_imguiCtx);
 
-        var win = _native!.Size;
-        var fb = _native.FramebufferSize;
+        var win = NativeWindow.Size;
+        var fb = NativeWindow.FramebufferSize;
         if (win.X <= 0 || win.Y <= 0 || fb.X <= 0 || fb.Y <= 0) return;
 
         var io = ImGui.GetIO();
@@ -111,6 +225,8 @@ public sealed class Application(string title = "VynEngine") : IDisposable
 
         DrawChromeAndDockspace();
         DrawAllWindows();
+        //TODO here modal render
+        Notifications.Render();
 
         ImGui.Render();
         _renderer.RenderDrawData(ImGui.GetDrawData());
@@ -134,8 +250,7 @@ public sealed class Application(string title = "VynEngine") : IDisposable
         const ImGuiWindowFlags dockFlags = ImGuiWindowFlags.NoDocking | ImGuiWindowFlags.NoTitleBar |
                                            ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize |
                                            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoBringToFrontOnFocus |
-                                           ImGuiWindowFlags.NoNavFocus | ImGuiWindowFlags.NoSavedSettings |
-                                           ImGuiWindowFlags.MenuBar;
+                                           ImGuiWindowFlags.NoNavFocus | ImGuiWindowFlags.NoSavedSettings;
         ImGui.Begin("##HostDock", dockFlags);
         var dockId = ImGui.GetID("VynDockSpace");
         ImGui.DockSpace(dockId, Vector2.Zero, ImGuiDockNodeFlags.PassthruCentralNode);
@@ -166,10 +281,22 @@ public sealed class Application(string title = "VynEngine") : IDisposable
     {
         _renderer?.Dispose();
         _input?.Dispose();
-        if (_imguiCtx != IntPtr.Zero)
+    }
+    
+    private void DrainUIActions()
+    {
+        while (_uiActions.TryDequeue(out var action))
         {
-            ImGui.DestroyContext(_imguiCtx);
-            _imguiCtx = IntPtr.Zero;
+            action();
+        }
+    }
+
+    private void UpdateIcon()
+    {
+        if (_icon.HasValue)
+        {
+            var iconRef = _icon.Value;
+            NativeWindow.SetWindowIcon(ref iconRef);
         }
     }
 
@@ -222,5 +349,14 @@ public sealed class Application(string title = "VynEngine") : IDisposable
             Key.PageUp => ImGuiKey.PageUp, Key.PageDown => ImGuiKey.PageDown,
             Key.Escape => ImGuiKey.Escape, _ => 0
         };
+    }
+    
+    private byte[]? LoadFromEmbeddedResource(string resourceName)
+    {
+        using var stream = typeof(Application).Assembly.GetManifestResourceStream(resourceName);
+        if (stream == null) return null;
+        using var ms = new MemoryStream();
+        stream.CopyTo(ms);
+        return ms.ToArray();
     }
 }

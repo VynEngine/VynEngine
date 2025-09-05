@@ -3,6 +3,7 @@
 /// <summary>
 /// The title bar chrome is a custom title bar implementation for ImGui windows.
 /// </summary>
+/// TODO: mostly unimplemented, will be done in the future
 public sealed class TitleBarChrome
 {
     /// <summary>

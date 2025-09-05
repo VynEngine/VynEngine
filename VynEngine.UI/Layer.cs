@@ -4,7 +4,7 @@
 /// A layer defines a distinct section of the UI that is rendered on the imaginary z-axis. It can be used to
 /// seperate different overlaying parts like dialogs, menus or toolbars.
 /// </summary>
-public abstract class Layer
+public class Layer
 {
     /// <summary>
     /// The UI context this layer belongs to. This might be null, until the layer is attached to a window.
@@ -21,6 +21,11 @@ public abstract class Layer
     /// All controls that are currently added to this layer.
     /// </summary>
     public IReadOnlyList<Control> Controls => _controls;
+    
+    /// <inheritdoc cref="OnAttach"/>
+    public event Action Attach = () => {};
+    /// <inheritdoc cref="OnDetach"/>
+    public event Action Detach = () => {};
     
     private readonly List<Control> _controls = [];
     
@@ -53,16 +58,19 @@ public abstract class Layer
             control.Layer = null;
         }
     }
-    
+
+    /// <inheritdoc cref="Application.InvokeOnUI(Action)"/>
+    public void InvokeOnUI(Action action) => Application.Instance?.InvokeOnUI(action);
+
     /// <summary>
     /// Gets called, when the layer is attached to its window.
     /// </summary>
-    protected virtual void OnAttach() {}
-    
+    protected virtual void OnAttach() => Attach();
+
     /// <summary>
     /// Gets called, when the layer is detached from its window.
     /// </summary>
-    public virtual void OnDetach() {}
+    public virtual void OnDetach() => Detach();
     
     /// <summary>
     /// Gets called every frame to render the layer's UI.
@@ -72,7 +80,7 @@ public abstract class Layer
     /// <summary>
     /// Internal helper to set the UI context this layer belongs to and call <see cref="OnAttach"/>.
     /// </summary>
-    internal void Attach(Window ui)
+    internal void InternalAttach(Window ui)
     {
         UI = ui;
         OnAttach();

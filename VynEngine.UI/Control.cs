@@ -16,6 +16,9 @@ public abstract class Control
     /// The layer this control belongs to. This might be null, until the control is added to a layer.
     /// </summary>
     public Layer? Layer { get; internal set; }
+
+    /// <inheritdoc cref="Application.InvokeOnUI(Action)"/>
+    public void InvokeOnUI(Action action) => Application.Instance?.InvokeOnUI(action);
     
     /// <summary>
     /// Gets called when the control is added to a layer.
