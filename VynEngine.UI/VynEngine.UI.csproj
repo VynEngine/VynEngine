@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <LangVersion>13</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\VynEngine.Core\VynEngine.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
+    </ItemGroup>
+    
+    <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+        <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(OS)' == 'Unix' and '$(RuntimeIdentifier)' == 'linux-x64'">
+        <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(OS)' == 'Unix' and '$(RuntimeIdentifier)' == 'osx-x64'">
+        <DefineConstants>$(DefineConstants);MACOS</DefineConstants>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(OS)' == 'Unix' and '$(RuntimeIdentifier)' == 'android-arm64'">
+        <DefineConstants>$(DefineConstants);ANDROID</DefineConstants>
+    </PropertyGroup>
+</Project>
