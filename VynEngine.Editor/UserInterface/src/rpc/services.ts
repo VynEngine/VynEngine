@@ -6,6 +6,7 @@ export interface WindowService {
   setMaximized(maximized: boolean): Promise<void>;
   setMinimized(minimized: boolean): Promise<void>;
   beginDrag(): Promise<void>;
+  beginResize(direction: string): Promise<void>;
   close(): Promise<void>;
 }
 

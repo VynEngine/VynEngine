@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import AppHeader from "@/components/AppHeader.vue";
+import Header from "@/components/layout/Header.vue";
+import ResizeHandles from "@/components/layout/ResizeHandles.vue";
 </script>
 
 <template>
-  <AppHeader />
+  <Header />
+
+  <ResizeHandles />
 </template>
 
 <style scoped>

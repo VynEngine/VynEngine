@@ -26,12 +26,12 @@ The editor provides a node-based flow designer, live preview, and a modern UI in
 
 - **Runtime / Engine Core:**
     - C# / .NET 9
+    - Silk.NET (OpenGL graphics, input, audio)
 - **Editor Frontend:**
     - Vue 3 + TypeScript
     - SCSS
 - **Editor Host:**
     - Photino.NET (Chromeless WebView host)
-- **Logging:** Serilog
 - **Tooling:**
     - Node.js ≥ 22.12 (recommended)
     - Vite (dev server & bundler)

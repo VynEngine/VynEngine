@@ -117,6 +117,22 @@ internal class Program
         WindowDragHelper.BeginDragFromTitlebar(Window, ref _isMaximized, _sizeBeforeMaximize, ref _posBeforeMaximize);
 #endif
     }
+
+    /// <summary>
+    /// Begins the resize operation for resizing the main application window. This is typically called when the user clicks
+    /// and drags the window borders or corners. This is currently only supported on Windows.
+    /// </summary>
+    /// <param name="direction">The direction of the resize operation.</param>
+    internal static void BeginResize(string direction)
+    {
+#if WINDOWS
+        WindowResizeHelper.Begin(Window, direction, () => _isMaximized, () =>
+        {
+            CustomMaximize(false);
+            Emit("window", "updateMaximized", false);
+        });
+#endif
+    }
     
     /// <summary>
     /// Emits a custom event to the JavaScript side. This is a one-way notification and does not expect a response.

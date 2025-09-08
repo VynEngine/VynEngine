@@ -47,6 +47,13 @@ internal sealed class WindowService
     public void BeginDrag() => Program.BeginDrag();
     
     /// <summary>
+    /// Starts the resize operation for resizing the main application window in the specified direction.
+    /// </summary>
+    /// <param name="direction">The direction of the resize operation.</param>
+    [RpcMethod]
+    public void BeginResize(string direction) => Program.BeginResize(direction);
+    
+    /// <summary>
     /// Closes the main application window.
     /// </summary>
     [RpcMethod]
