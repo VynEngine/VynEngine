@@ -1,9 +1,8 @@
 ﻿<script setup lang="ts">
 import {useWindowService} from "@/rpc/services.ts";
-import {computed, onMounted, onUnmounted, ref} from "vue";
+import {onMounted, onUnmounted, ref} from "vue";
 import {off, on} from "@/rpc";
 
-const fromYear = 2025;
 const defaultSubtitle = "Visual Novel Engine for simple ease of use";
 
 const windowService = useWindowService();
@@ -11,11 +10,6 @@ const windowService = useWindowService();
 const showWindowButtons = ref(false);
 const isMaximized = ref(false);
 const currentSubtitle = ref(defaultSubtitle);
-
-const copyrightYear = computed(() => {
-  const currentYear = new Date().getFullYear();
-  return currentYear > fromYear ? `${fromYear}-${currentYear}` : `${fromYear}`;
-});
 
 onMounted(async () => {
   on("window", "updateMaximized", onMaximizedChanged);
@@ -28,6 +22,10 @@ onUnmounted(() => {
   off("window", "updateMaximized", onMaximizedChanged);
   off("window", "updateSubtitle", onChangeSubtitle);
 });
+
+function toggleMaximize() {
+  windowService.setMaximized(!isMaximized.value);
+}
 
 function onMaximizedChanged(maximized: boolean) {
   isMaximized.value = maximized;
@@ -48,7 +46,7 @@ function onChangeSubtitle(newSubtitle: string) {
     </div>
 
     <div class="header-center">
-      <div class="title">VynEngine (c) DasDarki {{copyrightYear}}</div>
+      <div class="title">VynEngine</div>
       <div class="subtitle">{{currentSubtitle}}</div>
     </div>
 
@@ -56,7 +54,7 @@ function onChangeSubtitle(newSubtitle: string) {
       <button @click="windowService.setMinimized(true)">
         <i class="fa-solid fa-minus"/>
       </button>
-      <button @click="windowService.setMaximized(isMaximized = !isMaximized)">
+      <button @click="toggleMaximize">
         <i v-if="!isMaximized" class="fa-solid fa-up-right-and-down-left-from-center"/>
         <i v-else class="fa-solid fa-down-left-and-up-right-to-center"/>
       </button>
@@ -66,7 +64,3 @@ function onChangeSubtitle(newSubtitle: string) {
     </div>
   </div>
 </template>
-
-<style scoped>
-
-</style>

@@ -2,15 +2,15 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 
 import App from './App.vue';
-import router from './router';
+import tooltip from "@/directives/tooltip.ts";
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import '@/styles/index.scss';
 import '@/rpc';
 
-const app = createApp(App)
+const app = createApp(App);
 
-app.use(createPinia())
-app.use(router)
+app.directive('tooltip', tooltip);
+app.use(createPinia());
 
-app.mount('#app')
+app.mount('#app');

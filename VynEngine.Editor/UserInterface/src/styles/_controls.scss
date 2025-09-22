@@ -1,0 +1,315 @@
+﻿:root {
+  --ring: 0 0 0 2px rgba(61, 217, 217, 0.35);
+}
+
+.u-muted {
+  color: var(--color-text-muted);
+}
+
+.u-divider {
+  border-top: 1px solid rgba(255, 255, 255, .06);
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .02));
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+  overflow: hidden;
+
+  &__header, &__footer {
+    padding: .75rem 1rem;
+    background: rgba(0, 0, 0, .15);
+    border-bottom: 1px solid rgba(255, 255, 255, .06);
+  }
+
+  &__footer {
+    border-top: 1px solid rgba(255, 255, 255, .06);
+    border-bottom: 0;
+  }
+
+  &__title {
+    font-weight: 700;
+  }
+
+  &__body {
+    padding: 1rem;
+  }
+}
+
+$btn-sizes: (
+    sm: (py: .35rem, px: .7rem, fs: .85rem, rd: 6px),
+    md: (py: .5rem, px: .9rem, fs: .95rem, rd: var(--radius-md)),
+    lg: (py: .7rem, px: 1.2rem, fs: 1.05rem, rd: 10px)
+);
+
+@mixin btn-base($py, $px, $fs, $rd) {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: $py $px;
+  font-size: $fs;
+  line-height: 1;
+  border-radius: $rd;
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .05s ease;
+  &:disabled, &.is-disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  &:active {
+    transform: translateY(1px);
+  }
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+}
+
+.btn {
+  @include btn-base(map-get(map-get($btn-sizes, md), py), map-get(map-get($btn-sizes, md), px), map-get(map-get($btn-sizes, md), fs), map-get(map-get($btn-sizes, md), rd));
+
+  &--sm {
+    @include btn-base(map-get(map-get($btn-sizes, sm), py), map-get(map-get($btn-sizes, sm), px), map-get(map-get($btn-sizes, sm), fs), map-get(map-get($btn-sizes, sm), rd));
+  }
+
+  &--lg {
+    @include btn-base(map-get(map-get($btn-sizes, lg), py), map-get(map-get($btn-sizes, lg), px), map-get(map-get($btn-sizes, lg), fs), map-get(map-get($btn-sizes, lg), rd));
+  }
+
+  &--block {
+    width: 100%;
+    justify-content: center;
+  }
+
+  i {
+    font-size: 1em;
+  }
+}
+
+@function is-gradient($v) {
+  @return str-index(#{$v}, 'gradient') != null;
+}
+
+@function outline-color($bg, $name) {
+  @if $name == neutral {
+    @return var(--color-text);
+  }
+  @return if(is-gradient($bg), var(--color-accent-cyan), $bg);
+}
+
+$palette: (
+    primary: (bg: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-cyan)), flat: var(--color-accent-cyan)),
+    neutral: (bg: rgba(255, 255, 255, .08), flat: rgba(255, 255, 255, .85)),
+    success: (bg: var(--color-success), flat: #0f6f3f),
+    warning: (bg: var(--color-warning), flat: #6e4b08),
+    error: (bg: var(--color-error), flat: #7e1e16),
+    info: (bg: var(--color-info), flat: #1b5d86)
+);
+
+@each $name, $vals in $palette {
+  $bg: map-get($vals, bg);
+  $flat: map-get($vals, flat);
+
+  .btn--#{$name}.is-filled {
+    background: $bg;
+    color: #0b0c0d;
+    border-color: transparent;
+
+    &:hover {
+      filter: brightness(1.06);
+    }
+
+    &:active {
+      filter: brightness(0.98);
+    }
+  }
+
+  .btn--#{$name}.is-outline {
+    background: transparent;
+    border-color: if(is-gradient($bg), var(--color-accent-cyan), $bg);
+    color: outline-color($bg, $name);
+
+    &:hover {
+      background: rgba(255, 255, 255, .06);
+    }
+  }
+
+  .btn--#{$name}.is-plain {
+    background: transparent;
+    border-color: transparent;
+    color: outline-color($bg, $name);
+
+    &:hover {
+      background: rgba(255, 255, 255, .06);
+    }
+  }
+}
+
+.input, .textarea, .select {
+  width: 100%;
+  background: rgba(255, 255, 255, .04);
+  color: var(--color-text);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: var(--radius-md);
+  padding: .55rem .7rem;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, .25);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent-cyan);
+    box-shadow: var(--ring);
+  }
+
+  &:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+  }
+
+  &::placeholder {
+    color: rgba(255, 255, 255, .4);
+  }
+}
+
+.textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, .6) 50%), linear-gradient(135deg, rgba(255, 255, 255, .6) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2rem;
+}
+
+.form-field {
+  display: grid;
+  gap: .4rem;
+
+  label {
+    font-size: .85rem;
+    color: var(--color-text-muted);
+  }
+
+  .hint {
+    font-size: .75rem;
+    color: var(--color-text-muted);
+  }
+
+  & + .form-field {
+    margin-top: .75rem;
+  }
+}
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    display: none;
+  }
+
+  .box, .dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid rgba(255, 255, 255, .22);
+    display: grid;
+    place-items: center;
+    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+
+  &--checkbox .box::after {
+    content: "\f00c";
+    font: normal normal normal 14px/1 "Font Awesome 6 Free";
+    font-weight: 900;
+    color: transparent;
+    transition: color .1s ease;
+  }
+
+  &--checkbox input:checked + .box {
+    border-color: var(--color-accent-cyan);
+    background: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-cyan));
+    box-shadow: var(--ring);
+  }
+
+  &--checkbox input:checked + .box::after {
+    color: #0b0c0d;
+  }
+
+  &--radio .dot {
+    border-radius: 50%;
+  }
+
+  &--radio .dot::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: transparent;
+    transition: background .1s ease;
+  }
+
+  &--radio input:checked + .dot {
+    border-color: var(--color-accent-cyan);
+    box-shadow: var(--ring);
+  }
+
+  &--radio input:checked + .dot::after {
+    background: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-cyan));
+  }
+
+  &.is-disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+}
+
+.progress {
+  height: 8px;
+  width: 100%;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  overflow: hidden;
+
+  &__bar {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-cyan));
+    transition: width .2s ease;
+  }
+
+  &.is-indeterminate .progress__bar {
+    position: relative;
+    width: 30%;
+    animation: progress-indet 1.2s infinite ease-in-out;
+  }
+}
+
+@keyframes progress-indet {
+  0% {
+    transform: translateX(-40%);
+  }
+  50% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(-40%);
+  }
+}

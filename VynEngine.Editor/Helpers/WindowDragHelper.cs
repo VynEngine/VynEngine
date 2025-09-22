@@ -1,7 +1,6 @@
 ﻿using System.Drawing;
 using System.Runtime.InteropServices;
 using Photino.NET;
-using VynEngine.Editor.Rpc;
 
 namespace VynEngine.Editor.Helpers;
 
@@ -52,6 +51,8 @@ internal static class WindowDragHelper
         public RECT rcWork;
         public uint dwFlags;
     }
+    
+    private static DateTime? _lastDragTime;
 
     public static void BeginDragFromTitlebar(PhotinoWindow window, ref bool isMaximized, Size normalSize, ref Point normalPos)
     {
@@ -83,6 +84,21 @@ internal static class WindowDragHelper
             window.SetSize(normalSize.Width, normalSize.Height);
 
             normalPos = new Point(targetLeft, targetTop);
+
+            _lastDragTime = null;
+        }
+        else
+        {
+            if (_lastDragTime.HasValue && (DateTime.Now - _lastDragTime.Value).TotalMilliseconds < 200) // double click threshold
+            {
+                Program.CustomMaximize(true);
+                isMaximized = true;
+                Program.Emit("window", "updateMaximized", true);
+                _lastDragTime = null;
+                return;
+            }
+        
+            _lastDragTime = DateTime.Now;
         }
 
         ReleaseCapture();
