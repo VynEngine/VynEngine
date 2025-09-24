@@ -4,11 +4,18 @@ import ResizeHandles from "@/components/layout/ResizeHandles.vue";
 import ToastContainer from "@/components/container/ToastContainer.vue";
 import DialogContainer from "@/components/container/DialogContainer.vue";
 import ProgressContainer from "@/components/container/ProgressContainer.vue";
+import DockSpace from "@/components/docking/DockSpace.vue";
+import {useDockSpaceStore} from "@/stores/dockspace.ts";
 
+const dockSpaceStore = useDockSpaceStore();
 </script>
 
 <template>
   <Header />
+
+  <main>
+    <DockSpace :nodes="dockSpaceStore.nodes" />
+  </main>
 
   <ProgressContainer />
   <DialogContainer />
@@ -16,7 +23,3 @@ import ProgressContainer from "@/components/container/ProgressContainer.vue";
 
   <ResizeHandles />
 </template>
-
-<style scoped>
-
-</style>

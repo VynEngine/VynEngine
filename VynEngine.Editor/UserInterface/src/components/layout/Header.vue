@@ -3,7 +3,7 @@ import {useWindowService} from "@/rpc/services.ts";
 import {onMounted, onUnmounted, ref} from "vue";
 import {off, on} from "@/rpc";
 
-const defaultSubtitle = "Visual Novel Engine for simple ease of use";
+const defaultSubtitle = "Visual Novel Engine for ease of use";
 
 const windowService = useWindowService();
 

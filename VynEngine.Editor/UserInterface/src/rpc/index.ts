@@ -22,6 +22,7 @@ type RpcEvent = {
   svc: string;
   name: string;
   data?: any;
+  rid?: string;
 };
 
 const pending = new Map<string, {
@@ -55,10 +56,36 @@ function uuid() {
       }
       if (msg.type === 'vyn.evt' && msg.dir === 'cs->js') {
         const key = `${msg.svc}:${msg.name}`;
-        listeners.get(key)?.forEach(fn => fn(msg.data));
+        if (msg.rid) {
+          for (const fn of listeners.get(key) || []) {
+            const ret = fn(msg.data);
+            if (ret instanceof Promise) {
+              ret.then(res => {
+                // @ts-ignore
+                window.external.sendMessage(JSON.stringify({
+                  type: 'vyn.evt.resp',
+                  dir: 'js->cs',
+                  id: msg.rid,
+                  svc: 'return',
+                  method: JSON.stringify(res)
+                }));
+              });
+            } else if (ret !== undefined) {
+              // @ts-ignore
+              window.external.sendMessage(JSON.stringify({
+                type: 'vyn.evt.resp',
+                dir: 'js->cs',
+                id: msg.rid,
+                svc: 'return',
+                method: JSON.stringify(ret)
+              }));
+            }
+          }
+        } else {
+          listeners.get(key)?.forEach(fn => fn(msg.data));
+        }
       }
-    } catch { /* ignore */
-    }
+    } catch { /* ignore */ }
   });
 })();
 
@@ -80,16 +107,16 @@ function sendRpc(svc: string, method: string, args: any[], timeoutMs = 10000): P
   });
 }
 
-const listeners = new Map<string, Set<(d: any) => void>>();
+const listeners = new Map<string, Set<(d: any) => any>>();
 
-export function on(svc: string, name: string, handler: (data: any) => void) {
+export function on(svc: string, name: string, handler: (data: any) => any) {
   const key = `${svc}:${name}`;
   if (!listeners.has(key)) listeners.set(key, new Set());
   listeners.get(key)!.add(handler);
   return () => listeners.get(key)!.delete(handler);
 }
 
-export function off(svc: string, name: string, handler: (data: any) => void) {
+export function off(svc: string, name: string, handler: (data: any) => any) {
   const key = `${svc}:${name}`;
   listeners.get(key)?.delete(handler);
 }
