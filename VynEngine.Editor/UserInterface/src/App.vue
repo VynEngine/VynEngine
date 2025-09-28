@@ -14,7 +14,7 @@ const dockSpaceStore = useDockSpaceStore();
   <Header />
 
   <main>
-    <DockSpace :nodes="dockSpaceStore.nodes" />
+    <DockSpace v-for="node in dockSpaceStore.nodes" :node="node" />
   </main>
 
   <ProgressContainer />

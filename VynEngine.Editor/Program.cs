@@ -20,7 +20,7 @@ internal class Program
     internal static Logger Log { get; } = new LoggerConfiguration()
         .MinimumLevel.Debug()
         .WriteTo.Console()
-        .WriteTo.File("latest.log", rollingInterval: RollingInterval.Day)
+        .WriteTo.File("latest.log")
         .CreateLogger();
 
     /// <summary>
@@ -30,13 +30,15 @@ internal class Program
     
     private const string DefaultWindowTitle = "VynEngine";
     private static bool _isMaximized;
-    private static Size _sizeBeforeMaximize;
-    private static Point _posBeforeMaximize;
     
     [STAThread]
     private static void Main(string[] args)
     {
         RpcServer.RegisterServicesFromAssembly(typeof(Program).Assembly);
+
+#if WINDOWS
+        WindowsTaskbarHelper.Initialize();
+#endif
         
         PhotinoServer
             .CreateStaticFileServer(args, out var baseUrl)
@@ -75,11 +77,6 @@ internal class Program
         Window.WaitForClose();
     }
 
-    internal static void Emit()
-    {
-        
-    }
-
     /// <summary>
     /// Custom maximize implementation to handle maximization without using OS-level maximization.
     /// This allows for a more controlled behavior, especially in chromeless windows.
@@ -91,20 +88,19 @@ internal class Program
 
         if (maximize)
         {
-            _sizeBeforeMaximize = Window.Size;
-            _posBeforeMaximize = Window.Location;
-
-            var monSize = Window.MainMonitor.WorkArea;
-            Window.SetSize(monSize.Width, monSize.Height);
-            Window.Location = new Point(0, 0);
+#if WINDOWS
+            WindowResizeHelper.EnterCustomMaximize(Window);
+#endif
         }
         else
         {
-            Window.SetSize(_sizeBeforeMaximize.Width, _sizeBeforeMaximize.Height);
-            Window.Location = _posBeforeMaximize;
+#if WINDOWS
+            WindowResizeHelper.ExitCustomMaximize(Window);
+#endif
         }
 
         _isMaximized = maximize;
+        Emit("window", "updateMaximized", maximize);
     }
 
     /// <summary>
@@ -114,7 +110,8 @@ internal class Program
     internal static void BeginDrag()
     {
 #if WINDOWS
-        WindowDragHelper.BeginDragFromTitlebar(Window, ref _isMaximized, _sizeBeforeMaximize, ref _posBeforeMaximize);
+        WindowResizeHelper.GetSavedState(Window, out var size, out var pos);
+        WindowDragHelper.BeginDragFromTitlebar(Window, ref _isMaximized, size, ref pos);
 #endif
     }
 

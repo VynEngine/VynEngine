@@ -4,261 +4,251 @@ import {
   type DockNode,
   DockNodeDirection,
   DockNodeKind,
+  type DockPane,
   type DockSplitNode,
   type DockTabsNode,
-  type DockPane
 } from "@/@types/dockspace";
+import {useDataService} from "@/rpc/services.ts";
+import {parse, stringify} from 'smol-toml';
+import {useToastStore} from "@/stores/toast.ts";
 
-export type DockPath = number[];
-export type DropZone = "center" | "north" | "south" | "west" | "east";
-
-function isSplit(n: DockNode): n is DockSplitNode {
-  return n.kind === DockNodeKind.Split;
-}
-
-function isTabs(n: DockNode): n is DockTabsNode {
-  return n.kind === DockNodeKind.Tabs;
-}
-
-function clonePane(p: DockPane): DockPane {
-  return {...p};
-}
+const defaultLayout = () => [
+  {
+    kind: DockNodeKind.Split,
+    direction: DockNodeDirection.Horizontal,
+    sizes: [30, 70],
+    children: [
+      {
+        kind: DockNodeKind.Tabs,
+        tabs: [
+          {id: 'sidebar', title: 'Sidebar', content: 'TestLayout'},
+        ],
+        activeTab: 'sidebar'
+      } as DockTabsNode,
+      {
+        kind: DockNodeKind.Split,
+        direction: DockNodeDirection.Vertical,
+        sizes: [70, 30],
+        children: [
+          {
+            kind: DockNodeKind.Tabs,
+            tabs: [
+              {id: 'main', title: 'Main', content: 'TestLayout'},
+            ],
+            activeTab: 'main'
+          } as DockTabsNode,
+          {
+            kind: DockNodeKind.Tabs,
+            tabs: [
+              {id: 'console', title: 'Console', content: 'TestLayout'},
+              {id: 'logs', title: 'Logs', content: 'TestLayout'}
+            ],
+            activeTab: 'console'
+          } as DockTabsNode
+        ]
+      } as DockSplitNode
+    ]
+  } as DockSplitNode
+] as DockNode[];
 
 export const useDockSpaceStore = defineStore('dockspace', () => {
-  // ---------- STATE ----------
-  const nodes = ref<DockNode[]>([
-    {
-      kind: DockNodeKind.Split,
-      direction: DockNodeDirection.Horizontal,
-      sizes: [30, 70],
-      children: [
-        {
-          kind: DockNodeKind.Tabs,
-          tabs: [
-            {id: 'sidebar', title: 'Sidebar', content: 'TestLayout'},
-          ],
-          activeTab: 'sidebar'
-        } as DockTabsNode,
-        {
-          kind: DockNodeKind.Split,
-          direction: DockNodeDirection.Vertical,
-          sizes: [70, 30],
-          children: [
-            {
-              kind: DockNodeKind.Tabs,
-              tabs: [
-                {id: 'main', title: 'Main', content: 'TestLayout'},
-              ],
-              activeTab: 'main'
-            } as DockTabsNode,
-            {
-              kind: DockNodeKind.Tabs,
-              tabs: [
-                {id: 'console', title: 'Console', content: 'TestLayout'},
-                {id: 'logs', title: 'Logs', content: 'TestLayout'}
-              ],
-              activeTab: 'console'
-            } as DockTabsNode
-          ]
-        } as DockSplitNode
-      ]
-    } as DockSplitNode
-  ]); //TODO: load
+  const nodes = ref<DockNode[]>(defaultLayout());
+  const layoutFile = ref<string>("");
 
-  nodes.value.forEach(n => normalizeSizes(n));
-
-  const dnd = reactive({
-    dragging: false,
-    pane: null as DockPane | null,
-    fromPath: [] as DockPath,
-    previewX: 0,
-    previewY: 0,
-    overPath: null as DockPath | null,
-    zone: null as DropZone | null,
-  });
-
-  function getRoot(): DockNode {
-    return nodes.value[0];
-  }
-
-  function getNodeByPath(root: DockNode, path: DockPath): DockNode {
-    let n: DockNode = root;
-    for (const i of path) {
-      if (!isSplit(n)) break;
-      n = n.children[i];
-    }
-    return n;
-  }
-
-  function setNodeByPath(root: DockNode, path: DockPath, node: DockNode) {
-    if (path.length === 0) {
-      nodes.value[0] = node;
-      return;
-    }
-    const parentPath = path.slice(0, -1);
-    const idx = path[path.length - 1];
-    const parent = getNodeByPath(root, parentPath) as DockSplitNode;
-    parent.children.splice(idx, 1, node);
-  }
-
-  function tabIndexById(tabs: DockTabsNode, id: string) {
-    return tabs.tabs.findIndex(t => t.id === id);
-  }
-
-  function removePane(root: DockNode, tabsPath: DockPath, tabIndex: number) {
-    const tabs = getNodeByPath(root, tabsPath) as DockTabsNode;
-    if (!isTabs(tabs)) return;
-
-    tabs.tabs.splice(tabIndex, 1);
-    if (!tabs.tabs.length) {
-      tabs.activeTab = "";
-      return;
-    }
-    if (!tabs.activeTab || tabIndexById(tabs, tabs.activeTab) === -1) {
-      tabs.activeTab = tabs.tabs[Math.min(tabIndex, tabs.tabs.length - 1)].id;
-    }
-  }
-
-  function insertIntoTabs(root: DockNode, tabsPath: DockPath, pane: DockPane, atIndex?: number) {
-    const tabs = getNodeByPath(root, tabsPath) as DockTabsNode;
-    if (!isTabs(tabs)) return;
-    const idx = atIndex == null ? tabs.tabs.length : Math.max(0, Math.min(atIndex, tabs.tabs.length));
-    tabs.tabs.splice(idx, 0, pane);
-    tabs.activeTab = pane.id;
-  }
-
-  function splitAt(root: DockNode, childPath: DockPath, direction: DockNodeDirection, place: "before" | "after", pane: DockPane) {
-    const parentPath = childPath.slice(0, -1);
-    const idx = childPath[childPath.length - 1];
-    const parent = parentPath.length ? (getNodeByPath(root, parentPath) as DockSplitNode) : null;
-    const target = parent ? parent.children[idx] : root;
-
-    const wrapTabs: DockTabsNode = isTabs(target)
-      ? (target as DockTabsNode)
-      : {kind: DockNodeKind.Tabs, tabs: [], activeTab: ""};
-
-    const newTabs: DockTabsNode = {kind: DockNodeKind.Tabs, tabs: [pane], activeTab: pane.id};
-    const split: DockSplitNode = {
-      kind: DockNodeKind.Split,
-      direction,
-      children: place === "before" ? [newTabs, wrapTabs] : [wrapTabs, newTabs],
-      sizes: [0.5, 0.5]
-    };
-
-    if (!parent) {
-      setNodeByPath(root, [], split);
-    } else {
-      parent.children.splice(idx, 1, split);
-      parent.sizes.splice(idx, 1, 0.5, 0.5);
-      normalizeSizes(parent);
-    }
-  }
-
-  function flatten(root: DockNode, path: DockPath) {
-    const node = getNodeByPath(root, path);
-
-    if (isTabs(node) && node.tabs.length === 0) {
-      if (path.length === 0) return;
-      const parentPath = path.slice(0, -1);
-      const idx = path[path.length - 1];
-      const parent = getNodeByPath(root, parentPath) as DockSplitNode;
-      parent.children.splice(idx, 1);
-      parent.sizes.splice(idx, 1);
-      normalizeSizes(parent);
-      if (parent.children.length === 1) {
-        const only = parent.children[0];
-        setNodeByPath(root, parentPath, only);
-      }
-    } else if (isSplit(node)) {
-      node.children.forEach((_, i) => flatten(root, [...path, i]));
-      if (node.children.length === 1) {
-        setNodeByPath(root, path, node.children[0]);
-      }
-      normalizeSizes(node);
-    }
-  }
-
-  function normalizeSizes(n: DockNode) {
-    if (isSplit(n)) {
-      const totalPxLike = n.sizes.reduce((a, b) => a + b, 0);
-      if (totalPxLike <= 0) {
-        const eq = 1 / Math.max(1, n.children.length);
-        n.sizes = new Array(n.children.length).fill(eq);
-      } else {
-        n.sizes = n.sizes.map(s => s / totalPxLike);
-      }
-      n.children.forEach(c => normalizeSizes(c));
-    }
-  }
-
-  function startTabDrag(pathToTabs: DockPath, tabIndex: number, clientX: number, clientY: number) {
-    const tabs = getNodeByPath(getRoot(), pathToTabs) as DockTabsNode;
-    if (!isTabs(tabs)) return;
-    const pane = clonePane(tabs.tabs[tabIndex]);
-    dnd.dragging = true;
-    dnd.pane = pane;
-    dnd.fromPath = [...pathToTabs, tabIndex];
-    dnd.previewX = clientX;
-    dnd.previewY = clientY;
-  }
-
-  function updatePointer(x: number, y: number) {
-    if (!dnd.dragging) return;
-    dnd.previewX = x;
-    dnd.previewY = y;
-  }
-
-  function updateHover(path: DockPath | null, zone: DropZone | null) {
-    if (!dnd.dragging) return;
-    dnd.overPath = path;
-    dnd.zone = zone;
-  }
-
-  function dropOrCancel() {
-    if (!dnd.dragging || !dnd.pane) {
-      cancelDrag();
-      return;
-    }
-    const root = getRoot();
-
-    if (dnd.overPath && dnd.zone) {
-      const fromTabsPath = dnd.fromPath.slice(0, -1);
-      const fromIndex = dnd.fromPath[dnd.fromPath.length - 1];
-      removePane(root, fromTabsPath, fromIndex);
-      flatten(root, fromTabsPath);
-
-      if (dnd.zone === "center") {
-        insertIntoTabs(root, dnd.overPath, dnd.pane);
-      } else {
-        const dir = (dnd.zone === "west" || dnd.zone === "east") ? DockNodeDirection.Horizontal : DockNodeDirection.Vertical;
-        const place = (dnd.zone === "west" || dnd.zone === "north") ? "before" : "after";
-        splitAt(root, dnd.overPath, dir, place, dnd.pane);
+  const service = useDataService();
+  (async () => {
+    layoutFile.value = await service.getFile(["editor", "layout.toml"]);
+    const layoutData = await service.read(layoutFile.value);
+    if (layoutData && layoutData.length > 0) {
+      try {
+        const parsed = parse(layoutData);
+        const parsedNodes = (parsed as any)["nodes"];
+        if (Array.isArray(parsedNodes)) {
+          nodes.value = parsedNodes as DockNode[];
+        } else {
+          console.warn("Invalid layout data, using default");
+        }
+      } catch (e) {
+        console.error("Failed to parse layout data:", e);
       }
     }
-
-    cancelDrag();
-  }
-
-  function cancelDrag() {
-    dnd.dragging = false;
-    dnd.pane = null;
-    dnd.fromPath = [];
-    dnd.overPath = null;
-    dnd.zone = null;
-  }
+  })();
 
   function save() {
-    // TODO: save
+    if (layoutFile.value === "") {
+      console.warn("Layout file path is empty, cannot save layout");
+      return;
+    }
+
+    service.write(layoutFile.value, stringify({nodes: nodes.value})).then(success => {
+      if (!success) {
+        console.warn("Failed to save layout data");
+      }
+    }).catch((e) => {
+      console.error("Failed to save layout data:", e);
+    });
+  }
+
+  const dnd = reactive({
+    draggingParent: null as DockTabsNode | null,
+    dragging: null as DockPane | null,
+    dragOver: null as DockNode | null,
+    dragOverPos: '' as 'top' | 'bottom' | 'left' | 'right' | 'center' | '',
+  });
+
+  function getParentNode(node: DockNode): DockNode | null {
+    function findParent(current: DockNode, target: DockNode): DockNode | null {
+      if (current.kind === DockNodeKind.Split) {
+        const splitNode = current as DockSplitNode;
+        for (const child of splitNode.children) {
+          if (child === target) {
+            return current;
+          }
+          const found = findParent(child, target);
+          if (found) {
+            return found;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    for (const rootNode of nodes.value) {
+      if (rootNode === node) {
+        return { kind: DockNodeKind.Root };
+      }
+
+      const parent = findParent(rootNode, node);
+      if (parent) {
+        return parent;
+      }
+    }
+
+    return null;
+  }
+
+  function removeNode(node: DockNode) {
+    const parent = getParentNode(node);
+    if (!parent) {
+      const notify = useToastStore();
+      notify.push({type: "warn", message: "Failed to remove node: parent not found!", timeout: 5000});
+      return;
+    }
+
+    if (parent.kind === DockNodeKind.Root) {
+      nodes.value = nodes.value.filter(n => n !== node);
+    } else if (parent.kind === DockNodeKind.Split) {
+      const splitParent = parent as DockSplitNode;
+      const index = splitParent.children.indexOf(node);
+      if (index !== -1) {
+        splitParent.children.splice(index, 1);
+        splitParent.sizes.splice(index, 1);
+        if (splitParent.children.length === 0) {
+          removeNode(splitParent);
+        }
+      }
+    }
+  }
+
+  function removePane(pane: DockPane, parent: DockTabsNode) {
+    const index = parent.tabs.findIndex(t => t.id === pane.id);
+    if (index !== -1) {
+      parent.tabs.splice(index, 1);
+      if (parent.activeTab === pane.id) {
+        if (parent.tabs.length > 0) {
+          parent.activeTab = parent.tabs[Math.max(0, index - 1)].id;
+        } else {
+          parent.activeTab = '';
+        }
+      }
+
+      if (parent.tabs.length === 0) {
+        removeNode(parent);
+      }
+    }
+  }
+
+  function movePane(oldParent: DockTabsNode, pane: DockPane, newParent: DockNode, position: 'top' | 'bottom' | 'left' | 'right' | 'center') {
+    removePane(pane, oldParent);
+
+    if (newParent.kind === DockNodeKind.Tabs) {
+      const tabsParent = newParent as DockTabsNode;
+      if (position === 'center') {
+        tabsParent.tabs.push(pane);
+        tabsParent.activeTab = pane.id;
+      } else {
+        const parentOfTabs = getParentNode(tabsParent);
+        if (!parentOfTabs || parentOfTabs.kind !== DockNodeKind.Split) {
+          const notify = useToastStore();
+          notify.push({type: "warn", message: "Failed to move node: invalid parent!", timeout: 5000});
+          return;
+        }
+
+        const splitParent = parentOfTabs as DockSplitNode;
+        const index = splitParent.children.indexOf(tabsParent);
+        if (index === -1) {
+          const notify = useToastStore();
+          notify.push({type: "warn", message: "Failed to move node: tabs parent not found in its parent!", timeout: 5000});
+          return;
+        }
+
+        let newSplit: DockSplitNode;
+        if (position === 'left' || position === 'right') {
+          newSplit = {
+            kind: DockNodeKind.Split,
+            direction: DockNodeDirection.Horizontal,
+            sizes: [50, 50],
+            children: []
+          };
+        } else {
+          newSplit = {
+            kind: DockNodeKind.Split,
+            direction: DockNodeDirection.Vertical,
+            sizes: [50, 50],
+            children: []
+          };
+        }
+
+        if (position === 'left' || position === 'top') {
+          newSplit.children.push({
+            kind: DockNodeKind.Tabs,
+            tabs: [pane],
+            activeTab: pane.id
+          } as DockTabsNode);
+          newSplit.children.push(tabsParent);
+        } else {
+          newSplit.children.push(tabsParent);
+          newSplit.children.push({
+            kind: DockNodeKind.Tabs,
+            tabs: [pane],
+            activeTab: pane.id
+          } as DockTabsNode);
+        }
+
+        splitParent.children.splice(index, 1, newSplit);
+      }
+    } else if (newParent.kind === DockNodeKind.Split) {
+      const splitParent = newParent as DockSplitNode;
+      let insertIndex = splitParent.children.length;
+      if (position === 'top' || position === 'left') {
+        insertIndex = 0;
+      }
+      splitParent.children.splice(insertIndex, 0, {
+        kind: DockNodeKind.Tabs,
+        tabs: [pane],
+        activeTab: pane.id
+      } as DockTabsNode);
+      splitParent.sizes.push(100 / splitParent.children.length);
+      splitParent.sizes = splitParent.sizes.map(() => 100 / splitParent.children.length);
+    } else {
+      const notify = useToastStore();
+      notify.push({type: "warn", message: "Failed to move node: invalid target!", timeout: 5000});
+    }
   }
 
   return {
-    // state
     nodes, dnd,
-    // utils
-    getNodeByPath, setNodeByPath, removePane, insertIntoTabs, splitAt, flatten, normalizeSizes,
-    // dnd
-    startTabDrag, updatePointer, updateHover, dropOrCancel, cancelDrag,
-    // misc
-    save
+    save, movePane
   };
 });

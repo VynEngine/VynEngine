@@ -13,3 +13,14 @@ export interface WindowService {
 export function useWindowService(): WindowService {
   return service<WindowService>('window');
 }
+
+export interface DataService {
+  getFile(parts: string[]): Promise<string>;
+  exists(path: string): Promise<boolean>;
+  read(path: string): Promise<string|null>;
+  write(path: string, content: string): Promise<boolean>;
+}
+
+export function useDataService(): DataService {
+  return service<DataService>('data');
+}

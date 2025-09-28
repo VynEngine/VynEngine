@@ -3,6 +3,54 @@
   height: 100%;
   display: flex;
   background: transparent;
+  position: relative;
+  .dock-hover {
+    position: absolute;
+    inset: 0;
+    background: rgba(61, 217, 217, .05);
+    border: 2px solid rgba(61, 217, 217, .25);
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    transition: opacity .15s ease;
+    display: none;
+  }
+  &.hovered .dock-hover {
+    display: block;
+  }
+}
+
+.dock-target {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    .target {
+      width: 40px;
+      height: 40px;
+      border-radius: 0.5rem !important;
+      background: rgba(255, 255, 255, .05);
+      border: 2px solid rgba(255, 255, 255, .1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease;
+      &:hover {
+        background: rgba(61, 217, 217, .1);
+        border-color: rgba(61, 217, 217, .65);
+      }
+    }
+  }
 }
 
 .dock-pane {
@@ -27,6 +75,16 @@
   border-bottom: 1px solid rgba(255, 255, 255, .08);
 }
 
+.dock-draghandle {
+  width: 100%;
+  height: 0.5rem;
+  cursor: grab;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+}
+
 .dock-tab {
   height: 26px;
   display: inline-flex;
@@ -49,6 +107,12 @@
     color: #0b0c0d;
     background: linear-gradient(90deg, var(--color-accent-green), var(--color-accent-cyan));
     font-weight: 600;
+  }
+
+  &.dock-dragghost {
+    opacity: .5;
+    transform: rotate(5deg);
+    cursor: grabbing;
   }
 }
 
@@ -107,6 +171,7 @@
 
 .splitter {
   position: relative;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, .6);
   background: rgba(255, 255, 255, .06);
   transition: background .12s ease;
   &.vertical {

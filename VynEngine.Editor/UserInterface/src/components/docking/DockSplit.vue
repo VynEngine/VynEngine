@@ -45,7 +45,7 @@ function onSplitterDown(index: number, e: MouseEvent) {
   <div class="dock-split" :class="node.direction">
     <template v-for="(child, i) in node.children" :key="i">
       <div class="dock-child" :style="{ flex: node.sizes[i] }">
-        <DockSpace :nodes="[child as DockNode]"/>
+        <DockSpace :node="child"/>
       </div>
 
       <div

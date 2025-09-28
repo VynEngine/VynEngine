@@ -1,6 +1,7 @@
 ﻿export enum DockNodeKind {
   Split = 'split',
   Tabs = 'tabs',
+  Root = 'root',
 }
 
 export enum DockNodeDirection {

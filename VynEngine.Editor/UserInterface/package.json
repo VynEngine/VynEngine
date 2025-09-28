@@ -17,6 +17,7 @@
     "@fortawesome/fontawesome-free": "^7.0.1",
     "fast-json-patch": "^3.1.1",
     "pinia": "^3.0.3",
+    "smol-toml": "^1.4.2",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
   },
