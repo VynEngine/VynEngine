@@ -1,8 +1,10 @@
 ﻿<script setup lang="ts">
 import {type Progress, useProgressStore} from '@/stores/progress';
-import {computed} from "vue";
+import {computed, watch} from "vue";
+import {useWindowService} from "@/rpc/services.ts";
 
 const store = useProgressStore();
+const windowService = useWindowService();
 
 const topMost = computed<Progress | null>(() => {
   if (store.items.length <= 0) {
@@ -13,15 +15,28 @@ const topMost = computed<Progress | null>(() => {
     return store.items[0];
   }
 
-  if (!store.items.some(x => x.value !== -1)) { // all indeterminate
+  if (!store.items.some(x => x.value !== -1)) {
     return {id: -1, label: '', value: -1}; // we return a dummy indeterminate progress
   }
 
-  // we calculate a total progress based on all determinate progresses (ignore indeterminate ones)
   const determinateItems = store.items.filter(x => x.value !== -1);
   const totalValue = determinateItems.reduce((acc, item) => acc + item.value, 0);
   const averageValue = Math.round((totalValue / determinateItems.length));
   return {id: -1, label: 'Overall Progress', value: averageValue};
+});
+
+watch(topMost, async newValue => {
+  if (!newValue) {
+    await windowService.hideTaskbarProgress();
+    return;
+  }
+
+  const indefinite = newValue.value === -1;
+  await windowService.showTaskbarProgress(indefinite);
+
+  if (!indefinite) {
+    await windowService.updateTaskbarProgress(newValue.value);
+  }
 });
 </script>
 

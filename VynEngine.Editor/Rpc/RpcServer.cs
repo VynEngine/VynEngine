@@ -121,10 +121,18 @@ internal static class RpcServer
             catch (TargetInvocationException tex)
             {
                 await SafeSendError((PhotinoWindow)sender!, tex.InnerException ?? tex, "invoke_failed");
+
+#if DEBUG
+                throw;
+#endif
             }
             catch (Exception ex)
             {
                 await SafeSendError((PhotinoWindow)sender!, ex, "server_error");
+                
+#if DEBUG
+                throw;
+#endif
             }
         });
     }

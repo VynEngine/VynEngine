@@ -5,27 +5,26 @@ namespace VynEngine.Editor.Helpers;
 
 internal static class WindowsTaskbarHelper
 {
-    internal static void Initialize() => TaskbarProgress.Init();
+    internal static void Initialize() => TaskbarProgress.Initialize();
     
     internal static void ShowProgress(PhotinoWindow w, bool indeterminate = false)
     {
-        TaskbarProgress.SetState(w.WindowHandle, indeterminate ? TBPFLAG.TBPF_INDETERMINATE : TBPFLAG.TBPF_NORMAL);
-        TaskbarProgress.SetValue(w.WindowHandle, 0, 100);
+        TaskbarProgress.SetState(w.WindowHandle, indeterminate ? TaskbarProgress.TaskbarStates.Indeterminate : TaskbarProgress.TaskbarStates.Normal);
     }
     
     internal static void HideProgress(PhotinoWindow w)
     {
-        TaskbarProgress.SetState(w.WindowHandle, TBPFLAG.TBPF_NOPROGRESS);
+        TaskbarProgress.SetState(w.WindowHandle, TaskbarProgress.TaskbarStates.NoProgress);
     }
     
     internal static void SetProgressErrored(PhotinoWindow w)
     {
-        TaskbarProgress.SetState(w.WindowHandle, TBPFLAG.TBPF_ERROR);
+        TaskbarProgress.SetState(w.WindowHandle, TaskbarProgress.TaskbarStates.Error);
     }
     
     internal static void SetProgressPaused(PhotinoWindow w)
     {
-        TaskbarProgress.SetState(w.WindowHandle, TBPFLAG.TBPF_PAUSED);
+        TaskbarProgress.SetState(w.WindowHandle, TaskbarProgress.TaskbarStates.Paused);
     }
     
     internal static void UpdateProgress(PhotinoWindow w, ulong current, ulong total)
@@ -33,50 +32,66 @@ internal static class WindowsTaskbarHelper
         TaskbarProgress.SetValue(w.WindowHandle, current, total);
     }
     
-    internal enum TBPFLAG
-    {
-        TBPF_NOPROGRESS    = 0x0,
-        TBPF_INDETERMINATE = 0x1, // Marquee
-        TBPF_NORMAL        = 0x2, // progress (green)
-        TBPF_ERROR         = 0x4, // red
-        TBPF_PAUSED        = 0x8  // yellow
-    }
-    
     private static class TaskbarProgress
     {
-        private static readonly ITaskbarList3 _tb = (ITaskbarList3)new CTaskbarList();
-        
-        public static void Init()
+        public enum TaskbarStates
         {
-            try { _tb.HrInit(); } catch { /* Explorer evtl. nicht verfügbar */ }
+            NoProgress    = 0,
+            Indeterminate = 0x1,
+            Normal        = 0x2,
+            Error         = 0x4,
+            Paused        = 0x8
         }
 
-        public static void SetState(IntPtr hwnd, TBPFLAG state) =>
-            _tb.SetProgressState(hwnd, state);
+        [ComImport]
+        [Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface ITaskbarList3
+        {
+            // ITaskbarList
+            [PreserveSig]
+            void HrInit();
+            [PreserveSig]
+            void AddTab(IntPtr hwnd);
+            [PreserveSig]
+            void DeleteTab(IntPtr hwnd);
+            [PreserveSig]
+            void ActivateTab(IntPtr hwnd);
+            [PreserveSig]
+            void SetActiveAlt(IntPtr hwnd);
 
-        public static void SetValue(IntPtr hwnd, ulong current, ulong total) =>
-            _tb.SetProgressValue(hwnd, current, total);
-    }
-    
-    [ComImport]
-    [Guid("EA1AFB91-9E28-4B86-90E9-9E9F8A5EEA84")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface ITaskbarList3
-    {
-        // ITaskbarList
-        void HrInit();
-        void AddTab(IntPtr hwnd);
-        void DeleteTab(IntPtr hwnd);
-        void ActivateTab(IntPtr hwnd);
-        void SetActiveAlt(IntPtr hwnd);
-        // ITaskbarList2
-        void MarkFullscreenWindow(IntPtr hwnd, [MarshalAs(UnmanagedType.Bool)] bool fFullscreen);
-        // ITaskbarList3 (Auszug)
-        void SetProgressValue(IntPtr hwnd, ulong ullCompleted, ulong ullTotal);
-        void SetProgressState(IntPtr hwnd, TBPFLAG tbpFlags);
-    }
+            // ITaskbarList2
+            [PreserveSig]
+            void MarkFullscreenWindow(IntPtr hwnd, [MarshalAs(UnmanagedType.Bool)] bool fFullscreen);
 
-    [ComImport]
-    [Guid("56FDF344-FD6D-11d0-958A-006097C9A090")]
-    private class CTaskbarList;
+            // ITaskbarList3
+            [PreserveSig]
+            void SetProgressValue(IntPtr hwnd, UInt64 ullCompleted, UInt64 ullTotal);
+            [PreserveSig]
+            void SetProgressState(IntPtr hwnd, TaskbarStates state);
+        }
+
+        [ComImport]    
+        [Guid("56fdf344-fd6d-11d0-958a-006097c9a090")]
+        [ClassInterface(ClassInterfaceType.None)]
+        private class TaskbarInstance;
+
+        private static ITaskbarList3 taskbarInstance = (ITaskbarList3)new TaskbarInstance();
+        private static bool taskbarSupported = Environment.OSVersion.Version >= new Version(6, 1);
+
+        public static void SetState(IntPtr windowHandle, TaskbarStates taskbarState)
+        {
+            if (taskbarSupported) taskbarInstance.SetProgressState(windowHandle, taskbarState);
+        }
+
+        public static void SetValue(IntPtr windowHandle, double progressValue, double progressMax)
+        {
+            if (taskbarSupported) taskbarInstance.SetProgressValue(windowHandle, (ulong)progressValue, (ulong)progressMax);
+        }
+        
+        public static void Initialize()
+        {
+            if (taskbarSupported) taskbarInstance.HrInit();
+        }
+    }
 }

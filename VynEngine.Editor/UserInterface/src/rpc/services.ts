@@ -8,6 +8,12 @@ export interface WindowService {
   beginDrag(): Promise<void>;
   beginResize(direction: string): Promise<void>;
   close(): Promise<void>;
+
+  showTaskbarProgress(indeterminate: boolean): Promise<void>;
+  hideTaskbarProgress(): Promise<void>;
+  setTaskbarProgressErrored(): Promise<void>;
+  setTaskbarProgressPaused(): Promise<void>;
+  updateTaskbarProgress(percent: number): Promise<void>;
 }
 
 export function useWindowService(): WindowService {

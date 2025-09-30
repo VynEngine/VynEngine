@@ -1,4 +1,6 @@
-﻿namespace VynEngine.Editor.Rpc.Services;
+﻿using VynEngine.Editor.Helpers;
+
+namespace VynEngine.Editor.Rpc.Services;
 
 /// <summary>
 /// The window service provides methods to interact with the main application window, such as resizing, moving, and changing the title.
@@ -58,6 +60,62 @@ internal sealed class WindowService
     /// </summary>
     [RpcMethod]
     public void Close() => Program.Window.Close();
+
+    /// <summary>
+    /// Shows the taskbar progress indicator on Windows. If 'indeterminate' is true, the progress will be shown as a marquee.
+    /// </summary>
+    [RpcMethod]
+    public void ShowTaskbarProgress(bool indeterminate)
+    {
+#if WINDOWS
+        WindowsTaskbarHelper.ShowProgress(Program.Window, indeterminate);
+#endif
+    }
+    
+    /// <summary>
+    /// Hides the taskbar progress indicator on Windows.
+    /// </summary>
+    [RpcMethod]
+    public void HideTaskbarProgress()
+    {
+#if WINDOWS
+        WindowsTaskbarHelper.HideProgress(Program.Window);
+#endif
+    }
+    
+    /// <summary>
+    /// Sets the taskbar progress indicator on Windows to an errored state, typically shown as red.
+    /// </summary>
+    [RpcMethod]
+    public void SetTaskbarProgressErrored()
+    {
+#if WINDOWS
+        WindowsTaskbarHelper.SetProgressErrored(Program.Window);
+#endif
+    }
+    
+    /// <summary>
+    /// Sets the taskbar progress indicator on Windows to a paused state, typically shown as yellow.
+    /// </summary>
+    [RpcMethod]
+    public void SetTaskbarProgressPaused()
+    {
+#if WINDOWS
+        WindowsTaskbarHelper.SetProgressPaused(Program.Window);
+#endif
+    }
+    
+    /// <summary>
+    /// Updates the taskbar progress indicator on Windows to reflect the current progress.
+    /// </summary>
+    [RpcMethod]
+    public void UpdateTaskbarProgress(double percent)
+    {
+#if WINDOWS
+        var current = (ulong)(percent * 100);
+        WindowsTaskbarHelper.UpdateProgress(Program.Window, current, 100);
+#endif
+    }
     
     /// <summary>
     /// Changes the subtitle of the main application window. This is typically displayed below the main title.

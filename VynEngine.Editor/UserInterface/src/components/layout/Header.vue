@@ -2,8 +2,11 @@
 import {useWindowService} from "@/rpc/services.ts";
 import {onMounted, onUnmounted, ref} from "vue";
 import {off, on} from "@/rpc";
+import {useProgressStore} from "@/stores/progress.ts";
 
 const defaultSubtitle = "Visual Novel Engine for ease of use";
+
+const progress = useProgressStore();
 
 const windowService = useWindowService();
 
@@ -34,13 +37,26 @@ function onMaximizedChanged(maximized: boolean) {
 function onChangeSubtitle(newSubtitle: string) {
   currentSubtitle.value = newSubtitle.trim().length <= 0 ? defaultSubtitle : newSubtitle;
 }
+
+function testProgress() {
+  const second = progress.start('Update', false);
+  let val = 0;
+  const interval = setInterval(() => {
+    val += 10;
+    progress.update(second, val);
+    if (val >= 100) {
+      clearInterval(interval);
+      setTimeout(() => {progress.finish(second);}, 500);
+    }
+  }, 500);
+}
 </script>
 
 <template>
   <div class="app-header" @mousedown.self="windowService.beginDrag()">
     <div class="header-left">
       <img src="/favicon.ico" alt="logo" class="logo"/>
-      <div class="menu">File</div>
+      <div class="menu" @click="testProgress()">File</div>
       <div class="menu">Edit</div>
       <div class="menu">View</div>
     </div>
