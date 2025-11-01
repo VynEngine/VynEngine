@@ -4,6 +4,7 @@
   display: flex;
   background: transparent;
   position: relative;
+  z-index: 1;
   .dock-hover {
     position: absolute;
     inset: 0;
@@ -29,6 +30,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  z-index: 5;
   .row {
     display: flex;
     align-items: center;
@@ -64,6 +66,7 @@
   border-radius: var(--radius-lg);
   box-shadow: 0 6px 16px rgba(0, 0, 0, .35);
   overflow: hidden;
+  z-index: 1;
 }
 
 .dock-tabbar {
@@ -97,6 +100,7 @@
   user-select: none;
   transition: background .15s ease, color .15s ease;
   font-size: .875rem;
+  z-index: 1;
 
   &:hover {
     color: var(--color-text);
@@ -146,6 +150,7 @@
   );
   padding: .5rem;
   overflow: hidden;
+  z-index: 1;
 }
 
 .dock-split {
@@ -153,6 +158,7 @@
   width: 100%;
   height: 100%;
   gap: 0;
+  z-index: 1;
 }
 
 .dock-split.horizontal {
@@ -167,6 +173,7 @@
   position: relative;
   overflow: hidden;
   display: flex;
+  z-index: 1;
 }
 
 .splitter {
