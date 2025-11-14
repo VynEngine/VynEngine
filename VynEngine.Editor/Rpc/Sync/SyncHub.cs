@@ -27,6 +27,7 @@ internal static class SyncHub
     /// <param name="key">The key of the object to request a snapshot of.</param>
     public static void EmitSnapshot(string key)
     {
+        if (!_objs.ContainsKey(key)) return;
         var (ver, data) = GetSnapshot(key);
         Program.Emit("sync", "snapshot", new { key, version=ver, data });
     }

@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using Photino.NET;
 
-namespace VynEngine.Editor.Helpers;
+namespace VynEngine.Editor.UI.Helpers;
 
 /// <summary>
 /// Windows only drag helper to allow dragging the window from a custom title bar.

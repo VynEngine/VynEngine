@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using Photino.NET;
 
-namespace VynEngine.Editor.Helpers;
+namespace VynEngine.Editor.UI.Helpers;
 
 internal static class WindowsTaskbarHelper
 {

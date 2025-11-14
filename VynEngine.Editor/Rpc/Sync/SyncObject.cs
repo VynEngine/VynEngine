@@ -34,7 +34,7 @@ internal sealed class SyncObject : ISyncNode
     /// <summary>
     /// Sets a child node by key. If a child with the same key already exists, it is replaced.
     /// </summary>
-    public void Set(string key, ISyncNode node)
+    public SyncObject Set(string key, ISyncNode node)
     {
         _children[key] = node;
         if (node is SyncObject so) so.BindPath(_path, key);
@@ -43,6 +43,8 @@ internal sealed class SyncObject : ISyncNode
 
         node.Changed += Relay;
         Changed?.Invoke(_path, new JsonPatchOp("add", PathString("/" + Escape(key)), node.ToPlain()));
+
+        return this;
     }
 
     /// <summary>

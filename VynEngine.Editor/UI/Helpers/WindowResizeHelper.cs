@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using Photino.NET;
 
-namespace VynEngine.Editor.Helpers;
+namespace VynEngine.Editor.UI.Helpers;
 
 /// <summary>
 /// Windows only helper methods for resizing the main application window.

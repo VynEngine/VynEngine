@@ -3,8 +3,9 @@ using Photino.NET;
 using Photino.NET.Server;
 using Serilog;
 using Serilog.Core;
-using VynEngine.Editor.Helpers;
 using VynEngine.Editor.Rpc;
+using VynEngine.Editor.Rpc.Services;
+using VynEngine.Editor.UI.Helpers;
 
 namespace VynEngine.Editor;
 
@@ -34,6 +35,8 @@ internal class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        _ = WindowService.Header; // make sure the header is initialized
+        
         RpcServer.RegisterServicesFromAssembly(typeof(Program).Assembly);
 
 #if WINDOWS

@@ -1,4 +1,5 @@
-﻿using VynEngine.Editor.Helpers;
+﻿using VynEngine.Editor.UI;
+using VynEngine.Editor.UI.Helpers;
 
 namespace VynEngine.Editor.Rpc.Services;
 
@@ -8,6 +9,11 @@ namespace VynEngine.Editor.Rpc.Services;
 [RpcService("window")]
 internal sealed class WindowService
 {
+    /// <summary>
+    /// The header UI component associated with the main application window.
+    /// </summary>
+    public static Header Header { get; } = new();
+    
     /// <summary>
     /// Returns true if the application is running on Windows, false otherwise.
     /// </summary>
@@ -118,8 +124,14 @@ internal sealed class WindowService
     }
     
     /// <summary>
-    /// Changes the subtitle of the main application window. This is typically displayed below the main title.
+    /// Invokes the click event for the header menu item with the specified ID.
     /// </summary>
-    /// <param name="subtitle">The new subtitle for the window. If empty, the subtitle will be reset.</param>
-    public static void ChangeSubtitle(string subtitle = "") => Program.Emit("window", "updateSubtitle", subtitle);
+    [RpcMethod]
+    public void InvokeHeaderMenuClicked(string id)
+    {
+        Header.FileMenu.InvokeClicked(id);
+        Header.EditMenu.InvokeClicked(id);
+        Header.ViewMenu.InvokeClicked(id);
+        Header.HelpMenu.InvokeClicked(id);
+    }
 }

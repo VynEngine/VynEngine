@@ -1,9 +1,10 @@
 ﻿<script setup lang="ts">
 import {useWindowService} from "@/rpc/services.ts";
-import {onMounted, onUnmounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import {off, on} from "@/rpc";
 import MenuList, {type HeaderMenu} from "@/components/layout/MenuList.vue";
 import {registerHotkey, unregisterHotkey, useHotkeys} from "@/composables/useHotkeys.ts";
+import {useSynced} from "@/rpc/sync.ts";
 
 const defaultSubtitle = "Visual Novel Engine for ease of use";
 const windowService = useWindowService();
@@ -13,36 +14,18 @@ const showWindowButtons = ref(false);
 const isMaximized = ref(false);
 const currentSubtitle = ref(defaultSubtitle);
 
-const menus = ref<HeaderMenu[]>([
-  { id: 'file', label: 'File' },
-  { id: 'edit', label: 'Edit' },
-  {
-    id: 'view',
-    label: 'View',
-    children: [
-      { id: 'toggle-devtools', label: 'Toggle Developer Tools', hotkey: 'F12', icon: 'fa-solid fa-code' },
-      { id: 'reload', label: 'Reload', hotkey: 'Ctrl+R', icon: 'fa-solid fa-arrows-rotate' },
-      { id: 'force-reload', label: 'Force Reload', hotkey: 'Ctrl+Shift+R', icon: 'fa-solid fa-arrows-rotate' },
-      { id: 'separator-1', type: 'separator' },
-      { id: 'toggle-fullscreen', label: 'Toggle Fullscreen', hotkey: 'F11', icon: 'fa-solid fa-expand' },
-      {
-        id: 'submenu-view',
-        label: 'Submenu',
-        children: [
-          { id: 'submenu-item-1', label: 'Item 1' },
-          { id: 'submenu-item-2', label: 'Item 2' },
-          { id: 'submenu-item-3', label: 'Item 3' }
-        ]
-      }
-    ]
-  },
-  { id: 'help', label: 'Help' }
-]);
+const menusSyncer = useSynced<{
+  items: HeaderMenu[]
+}>("header.menus");
+const menus = computed<HeaderMenu[]>(() => {
+  return menusSyncer.value?.items || [];
+});
 
 onMounted(async () => {
   on("window", "updateMaximized", onMaximizedChanged);
   on("window", "updateSubtitle", onChangeSubtitle);
   showWindowButtons.value = await windowService.isWindows();
+  console.log(menus.value);
 
   document.addEventListener("mousedown", onDocumentClick);
 
@@ -122,7 +105,7 @@ function onDocumentClick(e: MouseEvent) {
 }
 
 function onMenuItem(id: string) {
-  console.log("menu:", id);
+  windowService.invokeHeaderMenuClicked(id);
   closeAllMenus();
 }
 </script>

@@ -14,6 +14,7 @@ export interface WindowService {
   setTaskbarProgressErrored(): Promise<void>;
   setTaskbarProgressPaused(): Promise<void>;
   updateTaskbarProgress(percent: number): Promise<void>;
+  invokeHeaderMenuClicked(id: string): Promise<void>;
 }
 
 export function useWindowService(): WindowService {
